@@ -6,10 +6,11 @@ import signal
 from typing import List
 import warnings
 import sys
-from bluetti_mqtt.bluetooth import scan_devices
-from bluetti_mqtt.bus import EventBus
-from bluetti_mqtt.device_handler import DeviceHandler
-from bluetti_mqtt.mqtt_client import MQTTClient
+import mariadb
+from bluetti_monitor.bluetooth import scan_devices
+from bluetti_monitor.bus import EventBus
+from bluetti_monitor.device_handler import DeviceHandler
+from bluetti_monitor.monitor_service import MonitorService
 
 
 class CommandLineHandler:
@@ -25,33 +26,35 @@ class CommandLineHandler:
             action='store_true',
             help='Scans for devices and prints out addresses')
         parser.add_argument(
-            '--broker',
-            metavar='HOST',
-            dest='hostname',
-            help='The MQTT broker host to connect to')
-        parser.add_argument(
-            '--port',
-            default=1883,
-            type=int,
-            help='The MQTT broker port to connect to - defaults to %(default)s')
-        parser.add_argument(
-            '--username',
-            type=str,
-            help='The optional MQTT broker username')
-        parser.add_argument(
-            '--password',
-            type=str,
-            help='The optional MQTT broker password')
-        parser.add_argument(
             '--interval',
             default=0,
             type=int,
             help='The polling interval - default is to poll as fast as possible')
         parser.add_argument(
-            '--ha-config',
-            default='normal',
-            choices=['normal', 'none', 'advanced'],
-            help='What fields to configure in Home Assistant - defaults to most fields ("normal")')
+            '--dbhost',
+            default='localhost',
+            type=str,
+            help="The address of the mariadb server to use"
+        )
+        parser.add_argument(
+            '--dbport',
+            default=3306,
+            type=int,
+            help="The port of the mariadb server to use"
+        )
+
+        parser.add_argument(
+            '--dbuser',
+            default='default',
+            type=str,
+            help="The username for the mariadb"
+        )
+        parser.add_argument(
+            '--dbpass',
+            default='',
+            type=str,
+            help='The password for the MariaDB user'
+        )
         parser.add_argument(
             'addresses',
             metavar='ADDRESS',
@@ -66,7 +69,7 @@ class CommandLineHandler:
         args = parser.parse_args()
         if args.scan:
             asyncio.run(scan_devices())
-        elif args.hostname and len(args.addresses) > 0:
+        elif len(args.addresses) > 0:
             self.start(args)
         else:
             parser.print_help()
@@ -102,18 +105,14 @@ class CommandLineHandler:
         self.background_tasks.add(bus_task)
         bus_task.add_done_callback(self.background_tasks.discard)
 
-        # Start MQTT client
-        mqtt_client = MQTTClient(
-            bus=bus,
-            hostname=args.hostname,
-            home_assistant_mode=args.ha_config,
-            port=args.port,
-            username=args.username,
-            password=args.password,
-        )
-        mqtt_task = loop.create_task(mqtt_client.run())
-        self.background_tasks.add(mqtt_task)
-        mqtt_task.add_done_callback(self.background_tasks.discard)
+
+
+        # Start monitoring service
+        monitor_service = MonitorService(bus, args.dbhost, args.dbport, args.dbuser, args.dbpass)
+        monitor_task = loop.create_task(monitor_service.run())
+        self.background_tasks.add(monitor_task)
+        monitor_task.add_done_callback(self.background_tasks.discard)
+
 
         # Start bluetooth handler (manages connections)
         addresses: List[str] = list(set(args.addresses))

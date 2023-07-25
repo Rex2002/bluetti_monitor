@@ -2,45 +2,37 @@
 bluetti_mqtt
 ============
 
-This tool provides an MQTT interface to Bluetti power stations. State will be
-published to the ``bluetti/state/[DEVICE NAME]/[PROPERTY]`` topic, and commands
-can be sent to the ``bluetti/command/[DEVICE NAME]/[PROPERTY]`` topic.
+This tool provides a monitor for Bluetti power stations.
+All data will be stored in a mariaDB.
+
+Credits:
+The underlying groundwork (scanning, discovery and the bluetooth-stuff) is taken from https://github.com/warhammerkid/bluetti_mqtt.
 
 Installation
 ------------
 
 .. code-block:: bash
 
-    $ pip install bluetti_mqtt
+    $ pip install bluetti_monitor
 
 Usage
 -----
 
 .. code-block:: bash
 
-    $ bluetti-mqtt --scan
+    $ bluetti-monitor --scan
     Found AC3001234567890123: address 00:11:22:33:44:55
-    $ bluetti-mqtt --broker [MQTT_BROKER_HOST] 00:11:22:33:44:55
+    $ bluetti-monitor --dbuser {mariaDBuser} --dbpass {mariaDBpass} --interval 20 00:11:22:33:44:55
 
-If your MQTT broker has a username and password, you can pass those in.
+If your mariaDB is not running on localhost:3306, host and port can be specified with --dbhost and --dbport
 
-.. code-block:: bash
 
-    $ bluetti-mqtt --broker [MQTT_BROKER_HOST] --username username --password pass 00:11:22:33:44:55
-
-By default the device is polled as quickly as possible, but if you'd like to
-collect less data, the polling interval can be adjusted.
-
-.. code-block:: bash
-
-    # Poll every 60s
-    $ bluetti-mqtt --broker [MQTT_BROKER_HOST] --interval 60 00:11:22:33:44:55
 
 If you have multiple devices within bluetooth range, you can monitor all of
 them with just a single command. We can only talk to one device at a time, so
 you may notice some irregularity in the collected data, especially if you have
 not set an interval.
-
+I have not tested this and taken it directly from the source-repository, since I do not have access to more than one bluetti.
 .. code-block:: bash
 
     $ bluetti-mqtt --broker [MQTT_BROKER_HOST] 00:11:22:33:44:55 00:11:22:33:44:66
@@ -49,15 +41,15 @@ Background Service
 ------------------
 
 If you are running on a platform with systemd, you can use the following as a
-template. It should be placed in ``/etc/systemd/system/bluetti-mqtt.service``.
+template. It should be placed in ``/etc/systemd/system/bluetti-monitor.service``.
 Once you've written the file, you'll need to run
-``sudo systemctl start bluetti-mqtt``. If you want it to run automatically after
-rebooting, you'll also need to run ``sudo systemctl enable bluetti-mqtt``.
+``sudo systemctl start bluetti-monitor``. If you want it to run automatically after
+rebooting, you'll also need to run ``sudo systemctl enable bluetti-monitor``.
 
 .. code-block:: bash
 
     [Unit]
-    Description=Bluetti MQTT
+    Description=Bluetti Monitor
     After=network.target
     StartLimitIntervalSec=0
 
@@ -66,26 +58,13 @@ rebooting, you'll also need to run ``sudo systemctl enable bluetti-mqtt``.
     Restart=always
     RestartSec=30
     TimeoutStopSec=15
-    User=your_username_here
-    ExecStart=/home/your_username_here/.local/bin/bluetti-mqtt --broker [MQTT_BROKER_HOST] 00:11:22:33:44:55
+    User=bluePi
+    ExecStart=/home/your_username_here/.local/bin/bluetti-monitor --dbuser {dbusername} --dbpass {dbpass} --interval 20 00:00:00:00:00:00
+
 
     [Install]
     WantedBy=multi-user.target
 
-
-
-Home Assistant Integration
---------------------------
-
-If you have configured Home Assistant to use the same MQTT broker, then by
-default most data and switches will be automatically configured there. This is
-possible thanks to Home Assistant's support for automatic MQTT discovery, which
-is enabled by default with the discovery prefix of ``homeassistant``.
-
-This can be controlled with the ``--ha-config`` flag, which defaults to
-configuring most fields ("normal"). Home Assistant MQTT discovery can also be
-disabled, or additional internal device fields can be configured with the
-"advanced" option.
 
 Reverse Engineering
 -------------------

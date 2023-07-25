@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import Dict, List
 from bleak import BleakScanner
-from bluetti_mqtt.core import DeviceCommand
+from bluetti_monitor.core import DeviceCommand
 from .client import BluetoothClient
 
 

@@ -3,9 +3,9 @@ from bleak import BleakError
 import logging
 import time
 from typing import Dict, List, cast
-from bluetti_mqtt.bluetooth import BadConnectionError, MultiDeviceManager, ModbusError, ParseError, build_device
-from bluetti_mqtt.bus import CommandMessage, EventBus, ParserMessage
-from bluetti_mqtt.core import BluettiDevice, ReadHoldingRegisters
+from bluetti_monitor.bluetooth import BadConnectionError, MultiDeviceManager, ModbusError, ParseError, build_device
+from bluetti_monitor.bus import CommandMessage, EventBus, ParserMessage
+from bluetti_monitor.core import BluettiDevice, ReadHoldingRegisters
 
 
 class DeviceHandler:
